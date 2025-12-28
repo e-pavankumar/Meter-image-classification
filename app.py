@@ -112,5 +112,6 @@ def index():
             message = f"{count} images classified from folder"
 
     return render_template("index.html", message=message)
-
+if __name__ == "__main__":
+    app.run(debug=True)
 
