@@ -1,6 +1,6 @@
 # Meter Image Clarity Classifier
 
-🔗 **Live Demo:** https://meter-image-classification-3.onrender.com  
+🔗 **Live Demo:** https://meter-image-classification-3.onrender.com
 > Note: The application may take a few seconds to load due to free hosting.
 
 The system classifies utility meter images as **Clear** or **Unclear** using a lightweight Convolutional Neural Network (MobileNetV2).  
