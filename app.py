@@ -23,7 +23,6 @@ model.classifier[1] = nn.Linear(1280, 2)
 model.load_state_dict(torch.load(MODEL_PATH, map_location=device))
 model.to(device)
 model.eval()
-
 transform = transforms.Compose([
     transforms.Resize((224, 224)),
     transforms.ToTensor(),
@@ -32,12 +31,10 @@ transform = transforms.Compose([
         std=[0.229, 0.224, 0.225]
     )
 ])
-
-
+CONFIDENCE_THRESHOLD = 0.75
 @app.route("/uploads/<path:filename>")
 def uploaded_file(filename):
     return send_from_directory(UPLOADS_DIR, filename)
-
 
 @app.route("/", methods=["GET", "POST"])
 def index():
@@ -52,7 +49,6 @@ def index():
         if not files or files[0].filename == "":
             return render_template("index.html", message="No input selected")
 
-   
         if upload_type == "image":
             file = files[0]
             filename = secure_filename(file.filename)
@@ -73,7 +69,14 @@ def index():
 
             with torch.no_grad():
                 probs = torch.softmax(model(img_tensor), dim=1)
-                pred = torch.argmax(probs, dim=1).item()
+                conf, pred = torch.max(probs, dim=1)
+            conf = conf.item()
+            pred = pred.item()
+
+            if conf < CONFIDENCE_THRESHOLD:
+                os.remove(temp_path)
+                message = "Invalid image detected. Please upload a meter image."
+                return render_template("index.html", message=message)
 
             target_dir = clear_dir if pred == 0 else unclear_dir
             final_path = os.path.join(target_dir, filename)
@@ -84,19 +87,17 @@ def index():
             else:
                 unclear_images.append(f"{base_name}/classification/unclear/{filename}")
 
-            message = "Image classified successfully"
-
+            message = f"Image classified successfully (Confidence: {conf:.2f})"
         else:
             root_folder = files[0].filename.split("/")[0]
             base_folder = os.path.join(UPLOADS_DIR, root_folder)
-
             clear_dir = os.path.join(base_folder, "classification", "clear")
             unclear_dir = os.path.join(base_folder, "classification", "unclear")
 
             os.makedirs(clear_dir, exist_ok=True)
             os.makedirs(unclear_dir, exist_ok=True)
-
-            count = 0
+            valid_count = 0
+            rejected_count = 0
 
             for file in files:
                 parts = file.filename.split("/")
@@ -115,29 +116,31 @@ def index():
 
                 with torch.no_grad():
                     probs = torch.softmax(model(img_tensor), dim=1)
-                    pred = torch.argmax(probs, dim=1).item()
-
+                    conf, pred = torch.max(probs, dim=1)
+                conf = conf.item()
+                pred = pred.item()
+                if conf < CONFIDENCE_THRESHOLD:
+                    os.remove(temp_path)
+                    rejected_count += 1
+                    continue
                 target_dir = clear_dir if pred == 0 else unclear_dir
                 final_path = os.path.join(target_dir, filename)
                 shutil.move(temp_path, final_path)
-
                 if pred == 0:
                     clear_images.append(f"{root_folder}/classification/clear/{filename}")
                 else:
                     unclear_images.append(f"{root_folder}/classification/unclear/{filename}")
-
-                count += 1
-
-            message = f"{count} images classified from folder"
-
+                valid_count += 1
+            message = (
+                f"{valid_count} meter images classified successfully. "
+                f"{rejected_count} non-meter images rejected."
+            )
     return render_template(
         "index.html",
         message=message,
         clear_images=clear_images,
         unclear_images=unclear_images
     )
-
-
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
