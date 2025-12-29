@@ -1,5 +1,7 @@
 # Meter Image Clarity Classifier
 
+🔗 **Live Demo:** https://meter-image-classification-3.onrender.com
+
 The system classifies utility meter images as **Clear** or **Unclear** using a lightweight Convolutional Neural Network (MobileNetV2).  
 The project includes a Flask-based web application for real-time inference, supporting both **single-image** and **batch (folder)** uploads with automatic result organization.
 
@@ -172,4 +174,8 @@ python app.py
 
 Results
 
-Effectively separates clear and unclear meter images and Supports both single-image and batch classification
+- Effectively separates **clear** and **unclear** meter images.
+- Supports both **single-image** and **batch (folder)** classification.
+- Classification results are automatically stored in the `uploads/` directory using the original filenames.
+- The frontend displays uploaded images under **Clear Images** and **Unclear Images** sections for easy visualization.
+
