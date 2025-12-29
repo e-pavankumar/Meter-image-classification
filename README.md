@@ -158,6 +158,18 @@ python training.py
 python app.py
 
 
+## 🖼 Web Interface Results
+
+### 🔹 Single Image Classification
+![Single Image Result](screenshots/single_image_result.png)
+
+---
+
+### 🔹 Folder Upload Classification
+![Folder Upload Result](screenshots/folder_upload_result.png)
+
+
+
 Results
 
 Effectively separates clear and unclear meter images and Supports both single-image and batch classification
