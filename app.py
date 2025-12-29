@@ -1,6 +1,6 @@
 import os
 import shutil
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, send_from_directory
 from werkzeug.utils import secure_filename
 
 import torch
@@ -33,18 +33,26 @@ transform = transforms.Compose([
     )
 ])
 
+
+@app.route("/uploads/<path:filename>")
+def uploaded_file(filename):
+    return send_from_directory(UPLOADS_DIR, filename)
+
+
 @app.route("/", methods=["GET", "POST"])
 def index():
     message = ""
+    clear_images = []
+    unclear_images = []
 
     if request.method == "POST":
         upload_type = request.form.get("uploadType")
         files = request.files.getlist("files")
 
         if not files or files[0].filename == "":
-            return render_template("index.html", message=" No input selected")
+            return render_template("index.html", message="No input selected")
 
-      
+   
         if upload_type == "image":
             file = files[0]
             filename = secure_filename(file.filename)
@@ -67,16 +75,21 @@ def index():
                 probs = torch.softmax(model(img_tensor), dim=1)
                 pred = torch.argmax(probs, dim=1).item()
 
-            target = clear_dir if pred == 0 else unclear_dir
-            shutil.move(temp_path, os.path.join(target, filename))
+            target_dir = clear_dir if pred == 0 else unclear_dir
+            final_path = os.path.join(target_dir, filename)
+            shutil.move(temp_path, final_path)
+
+            if pred == 0:
+                clear_images.append(f"{base_name}/classification/clear/{filename}")
+            else:
+                unclear_images.append(f"{base_name}/classification/unclear/{filename}")
 
             message = "Image classified successfully"
 
-     
         else:
             root_folder = files[0].filename.split("/")[0]
-
             base_folder = os.path.join(UPLOADS_DIR, root_folder)
+
             clear_dir = os.path.join(base_folder, "classification", "clear")
             unclear_dir = os.path.join(base_folder, "classification", "unclear")
 
@@ -90,7 +103,6 @@ def index():
 
                 if len(parts) != 2:
                     continue
-
                 if not parts[1].lower().endswith((".jpg", ".jpeg", ".png")):
                     continue
 
@@ -105,15 +117,27 @@ def index():
                     probs = torch.softmax(model(img_tensor), dim=1)
                     pred = torch.argmax(probs, dim=1).item()
 
-                target = clear_dir if pred == 0 else unclear_dir
-                shutil.move(temp_path, os.path.join(target, filename))
+                target_dir = clear_dir if pred == 0 else unclear_dir
+                final_path = os.path.join(target_dir, filename)
+                shutil.move(temp_path, final_path)
+
+                if pred == 0:
+                    clear_images.append(f"{root_folder}/classification/clear/{filename}")
+                else:
+                    unclear_images.append(f"{root_folder}/classification/unclear/{filename}")
+
                 count += 1
 
             message = f"{count} images classified from folder"
 
-    return render_template("index.html", message=message)
+    return render_template(
+        "index.html",
+        message=message,
+        clear_images=clear_images,
+        unclear_images=unclear_images
+    )
+
+
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
-
-
